@@ -12,6 +12,7 @@ This guide will walk you through setting up and running the a simple and basic F
 First, the project has the following directory and file structure:
 
 
+```
 count-o-matic/
 ├── app.py
 ├── requirements.txt
@@ -19,7 +20,7 @@ count-o-matic/
 ├── docker-compose.yml
 └── templates/
     └── index.html
-
+```
 
 ## Step 1: Set Up the Project Files
 
