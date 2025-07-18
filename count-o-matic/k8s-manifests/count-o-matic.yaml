@@ -1,0 +1,109 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: count-o-matic
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: count-o-matic-redis
+  labels:
+    app: count-o-matic
+spec:
+  selector:
+    matchLabels:
+      app: count-o-matic-redis
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: count-o-matic-redis
+    spec:
+      containers:
+      - name: redis
+        image: docker.io/library/redis:alpine
+        args: ["redis-server"]
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+      volumes:
+      - name: redis-data
+        persistentVolumeClaim:
+          claimName: count-o-matic-redis-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: count-o-matic-redis-pvc
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: count-o-matic-redis
+spec:
+  selector:
+    app: count-o-matic-redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: count-o-matic-web
+spec:
+  selector:
+    matchLabels:
+      app: count-o-matic-web
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: count-o-matic-web
+    spec:
+      containers:
+      - name: web
+        image: quay.io/alexonoliveira/count-o-matic
+        env:
+        - name: REDIS_HOST
+          value: count-o-matic-redis
+        - name: REDIS_PORT
+          value: "6379"
+        ports:
+        - containerPort: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: count-o-matic-web
+spec:
+  selector:
+    app: count-o-matic-web
+  ports:
+  - port: 80
+    targetPort: 5000
+---
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: count-o-matic
+  namespace: count-o-matic
+spec:
+  to:
+    kind: Service
+    name: count-o-matic-web
+    weight: 100
+  port:
+    targetPort: 5000
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: None
+  wildcardPolicy: None
